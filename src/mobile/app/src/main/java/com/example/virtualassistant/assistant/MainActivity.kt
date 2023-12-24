@@ -168,10 +168,17 @@ class MainActivity : FragmentActivity() {
     }
 
     private fun initAI() {
-        /*****************************************************************************
-         * W A R N I N G
-         * TODO: Obfuscate before release to prevent leaks and surprise bills
-         *****************************************************************************/
+//        val dotenv = Dotenv.configure().directory("./assets").filename("env").load()
+//        val apikey = dotenv.get("OPEN_AI_API_KEY")
+//
+//        /*****************************************************************************
+//         * W A R N I N G
+//         * TODO: Obfuscate before release to prevent leaks and surprise bills
+//         *****************************************************************************/
+//
+//        if (apikey != null) {
+//            ai = OpenAI(apikey)
+//        }
 
         ai = OpenAI("YOUR_API_KEY_HERE")
     }

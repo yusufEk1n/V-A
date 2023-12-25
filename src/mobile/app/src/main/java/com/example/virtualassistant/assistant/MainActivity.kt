@@ -16,8 +16,10 @@ import android.os.Bundle
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
+import android.speech.tts.TextToSpeech
 import android.view.View
 import android.view.inputmethod.InputMethodManager
+import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.LinearLayout
@@ -36,8 +38,11 @@ import com.aallam.openai.api.model.ModelId
 import com.aallam.openai.client.OpenAI
 import com.example.virtualassistant.R
 import com.example.virtualassistant.assistant.adapters.ChatAdapter
+import com.example.virtualassistant.assistant.onboarding.WelcomeActivity
+import com.example.virtualassistant.assistant.settings.SettingsActivity
 import com.example.virtualassistant.assistant.ui.MicrophonePermissionScreen
 import com.example.virtualassistant.assistant.util.TextToSpeechManager
+import com.google.cloud.texttospeech.v1.TextToSpeechClient
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import io.github.cdimascio.dotenv.Dotenv
@@ -60,6 +65,7 @@ class MainActivity : FragmentActivity() {
     private var progress: ProgressBar? = null
     private var chat: ListView? = null
     private var activityTitle: TextView? = null
+    private var btnDebugTTS: Button? = null
 
     // Init chat
     private var messages: ArrayList<Map<String, Any>> = ArrayList()
@@ -68,9 +74,11 @@ class MainActivity : FragmentActivity() {
     // Init states
     private var isRecording = false
     private var keyboardMode = false
+    private var doesTTSSpeaking = false
 
     // init AI
     private var ai: OpenAI? = null
+    private var key: String? = null
 
     private var mediaPlayer: MediaPlayer? = null
     private var audioData: ByteArray? = null
@@ -141,14 +149,6 @@ class MainActivity : FragmentActivity() {
         setContentView(R.layout.activity_main)
 
         initSettings()
-
-        adapter = ChatAdapter(messages, this)
-
-        initUI()
-        initSpeechListener()
-        initTTS()
-        initLogic()
-        initAI()
     }
 
     public override fun onDestroy() {
@@ -162,16 +162,33 @@ class MainActivity : FragmentActivity() {
     /** SYSTEM INITIALIZATION START **/
 
     private fun initSettings() {
-        val chat: SharedPreferences = getSharedPreferences("chat", MODE_PRIVATE)
+        val settings: SharedPreferences = getSharedPreferences("settings", MODE_PRIVATE)
 
-        messages = try {
-            val gson = Gson()
-            val json = chat.getString("chat", null)
-            val type: Type = object : TypeToken<ArrayList<Map<String, Any>?>?>() {}.type
+        key = settings.getString("api_key", null)
 
-            gson.fromJson<Any>(json, type) as ArrayList<Map<String, Any>>
-        } catch (e: Exception) {
-            ArrayList()
+        if (key == null) {
+            startActivity(Intent(this, WelcomeActivity::class.java))
+            finish()
+        } else {
+            val chat: SharedPreferences = getSharedPreferences("chat", MODE_PRIVATE)
+
+            messages = try {
+                val gson = Gson()
+                val json = chat.getString("chat", null)
+                val type: Type = object : TypeToken<ArrayList<Map<String, Any>?>?>() {}.type
+
+                gson.fromJson<Any>(json, type) as ArrayList<Map<String, Any>>
+            } catch (e: Exception) {
+                ArrayList()
+            }
+
+            adapter = ChatAdapter(messages, this)
+
+            initUI()
+            initSpeechListener()
+            initTTS()
+            initLogic()
+            initAI()
         }
     }
 
@@ -196,6 +213,7 @@ class MainActivity : FragmentActivity() {
         btnSend = findViewById(R.id.btn_send)
         progress = findViewById(R.id.progress)
         activityTitle = findViewById(R.id.activity_title)
+        btnDebugTTS = findViewById(R.id.btn_debug_tts)
 
         try {
             val pInfo: PackageInfo = this.packageManager.getPackageInfo(this.packageName, 0)
@@ -229,6 +247,8 @@ class MainActivity : FragmentActivity() {
                     mediaPlayer?.release()
                     mediaPlayer = null
                 }
+
+                textToSpeechManager?.close()
 
                 btnMicro?.setImageResource(R.drawable.ic_microphone)
                 recognizer?.stopListening()
@@ -266,7 +286,7 @@ class MainActivity : FragmentActivity() {
         }
 
         btnSend?.setOnClickListener {
-            if (!messageInput?.text!!.equals("")) {
+            if (messageInput?.text.toString() != "") {
                 val message: String = messageInput?.text.toString()
 
                 messageInput?.setText("")
@@ -291,7 +311,24 @@ class MainActivity : FragmentActivity() {
         }
 
         btnSettings?.setOnClickListener {
-            // TODO: Implement this method
+            startActivity(Intent(this, SettingsActivity::class.java))
+        }
+
+        btnDebugTTS?.setOnClickListener {
+            if (!doesTTSSpeaking) {
+                doesTTSSpeaking = true
+                textToSpeech("Android is a mobile operating system developed by Google, based on the Linux kernel and designed primarily for touchscreen mobile devices such as smartphones and tablets.")
+            } else {
+                doesTTSSpeaking = false
+
+                if (mediaPlayer != null) {
+                    mediaPlayer?.stop()
+                    mediaPlayer?.release()
+                    mediaPlayer = null
+                }
+
+                textToSpeechManager?.close()
+            }
         }
     }
 
@@ -311,17 +348,25 @@ class MainActivity : FragmentActivity() {
         textToSpeechManager = TextToSpeechManager(this)
     }
 
+
     private fun initAI() {
-        val dotenv = Dotenv.configure().directory("./assets").filename("keys/env").load()
+        /*val dotenv = Dotenv.configure().directory("./assets").filename("keys/env").load()
         val apikey = dotenv.get("OPEN_AI_API_KEY")
 
-        /*****************************************************************************
+        *//*****************************************************************************
          * W A R N I N G
          * TODO: Obfuscate before release to prevent leaks and surprise bills
-         *****************************************************************************/
+         *****************************************************************************//*
 
         if (apikey != null) {
             ai = OpenAI(apikey)
+        }*/
+
+        if (key == null) {
+            startActivity(Intent(this, WelcomeActivity::class.java))
+            finish()
+        } else {
+            ai = OpenAI(key!!)
         }
     }
 
@@ -396,8 +441,6 @@ class MainActivity : FragmentActivity() {
 
 
     private fun playAudioU(audioDataArray: ByteArray) {
-
-
         mediaPlayer = MediaPlayer().apply {
             setAudioAttributes(
                 AudioAttributes.Builder()
@@ -416,8 +459,6 @@ class MainActivity : FragmentActivity() {
                 textToSpeechManager?.close()
             }
         }
-
-        textToSpeechManager?.close()
     }
 
     private fun createMediaDataSource(audioData: ByteArray): MediaDataSource {

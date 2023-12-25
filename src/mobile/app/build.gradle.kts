@@ -7,6 +7,14 @@ android {
     namespace = "com.example.virtualassistant"
     compileSdk = 34
 
+    packaging {
+        resources {
+            excludes += "META-INF/{AL2.0,LGPL2.1}"
+            excludes += "META-INF/INDEX.LIST"
+            excludes += "META-INF/DEPENDENCIES"
+        }
+    }
+
     defaultConfig {
         applicationId = "com.example.virtualassistant"
         minSdk = 27
@@ -48,7 +56,12 @@ dependencies {
     implementation("com.google.code.gson:gson:2.10.1")
     implementation("com.aallam.openai:openai-client:3.0.0")
     implementation("io.ktor:ktor-client-android:2.2.3")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.1")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.1")
     implementation("io.github.cdimascio:dotenv-kotlin:6.4.1")
+
+    implementation("com.google.cloud:google-cloud-texttospeech:2.19.0")
+    implementation("com.google.auth:google-auth-library-oauth2-http:1.16.0")
+    implementation("io.grpc:grpc-okhttp:1.55.1")
+
 }

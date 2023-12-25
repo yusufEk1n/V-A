@@ -8,6 +8,7 @@ import android.os.Bundle
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
+import com.example.virtualassistant.R
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 class MicrophonePermissionScreen : FragmentActivity() {
@@ -22,7 +23,7 @@ class MicrophonePermissionScreen : FragmentActivity() {
                 this.setResult(RESULT_OK)
                 finish()
             } else {
-                MaterialAlertDialogBuilder(this/*, R.style.App_MaterialAlertDialog*/)
+                MaterialAlertDialogBuilder(this, R.style.App_MaterialAlertDialog)
                     .setTitle("SpeakGPT")
                     .setMessage("You can not use this feature because app do not have microphone access.")
                     .setCancelable(false)
